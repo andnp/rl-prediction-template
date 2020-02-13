@@ -1,4 +1,5 @@
 import numpy as np
+from src.agents.registry import getAgent
 
 class BaseProblem:
     def __init__(self, exp, idx):
@@ -7,6 +8,8 @@ class BaseProblem:
 
         perm = exp.getPermutation(idx)
         self.params = perm['metaParameters']
+
+        self.Agent = getAgent(exp.agent)
 
         self.agent = None
         self.env = None
@@ -27,6 +30,3 @@ class BaseProblem:
 
     def getAgent(self):
         return self.agent
-
-    def getSteps(self):
-        return self.exp.steps

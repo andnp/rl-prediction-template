@@ -8,43 +8,84 @@ from src.experiment import ExperimentModel
 
 from RlGlue.environment import BaseEnvironment
 from RlGlue.agent import BaseAgent
+from src.utils.rlglue import OffPolicyWrapper
+
+from src.problems.registry import getProblem
+from src.utils.errors import partiallyApplyMSPBE, MSPBE
+from src.utils.Collector import Collector
 
 if len(sys.argv) < 3:
     print('run again with:')
-    print('python3 src/main.py <path/to/description.json> <idx>')
+    print('python3 src/main.py <runs> <path/to/description.json> <idx>')
     exit(1)
 
-max_steps = 100
+runs = int(sys.argv[1])
+exp = ExperimentModel.load(sys.argv[2])
+idx = int(sys.argv[3])
 
-exp = ExperimentModel.load()
-idx = int(sys.argv[2])
+collector = Collector()
+for run in range(runs):
+    # set random seeds accordingly
+    np.random.seed(run)
 
-# figure out which run number of these parameter settings this is
-run = exp.getRun(idx)
+    Problem = getProblem(exp.problem)
+    problem = Problem(exp, idx)
 
-# set random seeds accordingly
-np.random.seed(run)
+    env = problem.getEnvironment()
+    rep = problem.getRepresentation()
+    agent = problem.getAgent()
 
-# TODO: replace with real agent class and environment class
-glue = RlGlue(BaseAgent, BaseEnvironment)
+    mu = problem.behavior
+    pi = problem.target
 
-# Run the experiment
-rewards = []
-glue.start()
-for step in range(max_steps):
-    # call agent.step and environment.step
-    r, o, a, t = glue.step()
-    
-    # collect data throughout run
-    rewards.append(r)
+    # takes actions according to mu and will pass the agent an importance sampling ratio
+    # makes sure the agent only sees the state passed through rep.encode.
+    # agent does not see raw state
+    agent_wrapper = OffPolicyWrapper(agent, problem.getGamma(), mu, pi, rep.encode)
 
-    # if terminal state, then restart the interface
-    if t:
-        glue.start()
+    X = np.array([
+        rep.encode(i) for i in range(env.states + 1)
+    ])
 
+    P = env.buildTransitionMatrix(pi)
+    R = env.buildAverageReward(pi)
+    d = env.getSteadyStateDist(mu)
+
+    # precompute matrices for cheaply computing MSPBE
+    AbC = partiallyApplyMSPBE(X, P, R, d, problem.getGamma())
+
+    glue = RlGlue(agent_wrapper, env)
+
+    # Run the experiment
+    glue.start()
+    for step in range(exp.steps):
+        # call agent.step and environment.step
+        r, o, a, t = glue.step()
+
+        mspbe = MSPBE(*AbC, agent.theta)
+        collector.collect('mspbe', mspbe)
+
+        # if terminal state, then restart the interface
+        if t:
+            glue.start()
+
+    # tell the collector to start a new run
+    collector.reset()
+
+mspbe_data = collector.getStats('mspbe')
+
+import matplotlib.pyplot as plt
+from src.utils.plotting import plot
+fig, ax = plt.subplots(1)
+
+plot(ax, mspbe_data)
+ax.set_title('MSPBE')
+
+plt.show()
+exit()
 
 # save results to disk
 save_context = exp.buildSaveContext(idx, base="results")
 save_context.ensureExists()
 
-np.save(save_context.resolve('rewards.npy'), rewards)
+np.save(save_context.resolve('mspbe_summary.npy'), mspbe_data)

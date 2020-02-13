@@ -5,6 +5,9 @@ from PyExpUtils.models.ExperimentDescription import ExperimentDescription
 class ExperimentModel(ExperimentDescription):
     def __init__(self, d, path):
         super().__init__(d, path)
+        self.agent = d['agent']
+        self.problem = d['problem']
+        self.steps = d['steps']
 
 def load(path=None):
     path = path if path is not None else sys.argv[1]
