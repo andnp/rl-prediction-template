@@ -25,7 +25,7 @@ def partiallyApplyMSPBE(X, P, R, db, gamma):
 
     return (A, b, C, Cinv)
 
-def MSPBE(A, b, C, Cinv, w):
+def MSPBE(w, A, b, C, Cinv):
     dx = np.dot(-A, w) + b
 
     return dx.T.dot(Cinv).dot(dx)

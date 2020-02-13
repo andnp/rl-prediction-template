@@ -62,7 +62,7 @@ for run in range(runs):
         # call agent.step and environment.step
         r, o, a, t = glue.step()
 
-        mspbe = MSPBE(*AbC, agent.theta)
+        mspbe = MSPBE(agent.theta, *AbC)
         collector.collect('mspbe', mspbe)
 
         # if terminal state, then restart the interface
