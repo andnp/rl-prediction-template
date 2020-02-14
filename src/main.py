@@ -85,7 +85,7 @@ plt.show()
 exit()
 
 # save results to disk
-save_context = exp.buildSaveContext(idx, base="results")
+save_context = exp.buildSaveContext(idx, base="./")
 save_context.ensureExists()
 
 np.save(save_context.resolve('mspbe_summary.npy'), mspbe_data)
