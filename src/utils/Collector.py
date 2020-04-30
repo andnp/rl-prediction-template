@@ -1,10 +1,11 @@
+from typing import Any, Dict, List
 import numpy as np
-from src.utils.arrays import fillRest, last
+from PyExpUtils.utils.arrays import fillRest, last
 
 class Collector:
     def __init__(self):
-        self.run_data = {}
-        self.all_data = {}
+        self.run_data: Dict[str, List[Any]] = {}
+        self.all_data: Dict[str, List[List[Any]]] = {}
 
     def reset(self):
         for k in self.run_data:
@@ -19,7 +20,7 @@ class Collector:
         # reset the run_data for the next run
         self.run_data = {}
 
-    def fillRest(self, value, steps):
+    def fillRest(self, value: Any, steps: int):
         for k in self.run_data:
             arr = self.run_data[k]
             l = last(arr)
@@ -30,20 +31,20 @@ class Collector:
 
             fillRest(arr, v, steps)
 
-    def collect(self, name, value):
+    def collect(self, name: str, value: Any):
         arr = self.run_data.get(name, [])
         arr.append(value)
 
         self.run_data[name] = arr
 
-    def getStats(self, name):
+    def getStats(self, name: str):
         arr = self.all_data[name]
 
         runs = len(arr)
         min_len = min(map(lambda a: len(a), arr))
 
         arr = list(map(lambda a: a[:min_len], arr))
-        mean = np.mean(arr, axis=0)
-        stderr = np.std(arr, axis=0, ddof=1) / np.sqrt(runs)
+        mean: float = np.mean(arr, axis=0)
+        stderr: float = np.std(arr, axis=0, ddof=1) / np.sqrt(runs)
 
-        return [mean, stderr, runs]
+        return (mean, stderr, runs)
