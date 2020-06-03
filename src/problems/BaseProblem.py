@@ -1,4 +1,3 @@
-import numpy as np
 from src.agents.registry import getAgent
 
 class BaseProblem:

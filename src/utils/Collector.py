@@ -41,7 +41,7 @@ class Collector:
         arr = self.all_data[name]
 
         runs = len(arr)
-        min_len = min(map(lambda a: len(a), arr))
+        min_len = min(map(len, arr))
 
         arr = list(map(lambda a: a[:min_len], arr))
         mean: float = np.mean(arr, axis=0)

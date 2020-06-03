@@ -1,13 +1,11 @@
-import numpy as np
-import sys
 import os
+import sys
+import numpy as np
 sys.path.append(os.getcwd())
 
 from RlGlue import RlGlue
 from src.experiment import ExperimentModel
 
-from RlGlue.environment import BaseEnvironment
-from RlGlue.agent import BaseAgent
 from src.utils.rlglue import OffPolicyWrapper
 
 from src.problems.registry import getProblem
@@ -17,7 +15,7 @@ from src.utils.Collector import Collector
 if len(sys.argv) < 3:
     print('run again with:')
     print('python3 src/main.py <runs> <path/to/description.json> <idx>')
-    exit(1)
+    sys.exit(1)
 
 runs = int(sys.argv[1])
 exp = ExperimentModel.load(sys.argv[2])
@@ -82,7 +80,7 @@ plot(ax, mspbe_data)
 ax.set_title('MSPBE')
 
 plt.show()
-exit()
+sys.exit()
 
 # save results to disk
 save_context = exp.buildSaveContext(idx, base="./")

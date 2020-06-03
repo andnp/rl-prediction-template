@@ -1,5 +1,4 @@
 import numpy as np
-import re
 from PyFixedReps.BaseRepresentation import BaseRepresentation
 from src.problems.BaseProblem import BaseProblem
 from src.environments.RandomWalk import RandomWalk as RWEnv
@@ -16,6 +15,8 @@ class RandomWalk(BaseProblem):
 
         if name == 'dependent':
             return Dependent(self.states)
+
+        raise NotImplementedError('Unexpected representation name: ' + name)
 
     def __init__(self, exp, idx):
         super().__init__(exp, idx)
@@ -86,11 +87,11 @@ class Dependent(BaseRepresentation):
         idx = 0
         for i in range(nfeats):
             self.map[idx, 0:i+1] = 1
-            idx+=1
+            idx += 1
 
         for i in range(nfeats-1, 0, -1):
             self.map[idx, -i:] = 1
-            idx+=1
+            idx += 1
 
         self.map[:N] = (self.map[:N].T / np.linalg.norm(self.map[:N], axis=1)).T
 
