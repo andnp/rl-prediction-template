@@ -1,0 +1,8 @@
+{
+    "agent": "TDRC",
+    "problem": "Baird",
+    "steps": 100000,
+    "metaParameters": {
+        "alpha": [0.015625, 0.0078125, 0.00390625, 0.001953125]
+    }
+}

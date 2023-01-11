@@ -1,8 +1,9 @@
-from typing import Any, Callable, Sequence
+import numpy as np
+from typing import Any, Callable
 from PyExpUtils.utils.random import sample
 
 class Policy:
-    def __init__(self, probs: Callable[[Any], Sequence[float]]):
+    def __init__(self, probs: Callable[[Any], np.ndarray]):
         self.probs = probs
 
     def selectAction(self, s: Any):
@@ -13,8 +14,8 @@ class Policy:
         probs = self.probs(s)
         return probs[a] / other.probs(s)[a]
 
-def fromStateArray(probs: Sequence[Sequence[float]]):
+def fromStateArray(probs: np.ndarray):
     return Policy(lambda s: probs[s])
 
-def fromActionArray(probs: Sequence[float]):
+def fromActionArray(probs: np.ndarray):
     return Policy(lambda s: probs)
