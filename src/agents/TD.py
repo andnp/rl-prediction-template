@@ -8,7 +8,6 @@ from utils.representations import Representation
 @njit(cache=True)
 def td_update(
     w: np.ndarray,
-    alpha: float,
     x: np.ndarray,
     xp: np.ndarray,
     r: float,
@@ -21,19 +20,16 @@ def td_update(
     delta = r + gamma * vp - v
     dw = rho * delta * x
 
-    w += alpha * dw
-    return w
+    return -dw
 
 class TD(BaseAgent):
     def __init__(self, gamma: float, actions: int, params: Dict[str, Any], rep: Representation, mu: Policy, pi: Policy):
         super().__init__(gamma, actions, params, rep, mu, pi)
-        self.features = rep.features()
-        self.alpha = params['alpha']
-
         self.theta = np.zeros(self.features)
 
     def update(self, x, a, xp, r, gamma, rho):
-        self.theta = td_update(self.theta, self.alpha, x, xp, r, gamma, rho)
+        dw = td_update(self.theta, x, xp, r, gamma, rho)
+        self.theta = self.opt.apply(self.theta, dw)
 
     def weights(self):
         return self.theta

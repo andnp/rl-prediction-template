@@ -1,16 +1,15 @@
-import sys
 import json
+from typing import Dict
 from PyExpUtils.models.ExperimentDescription import ExperimentDescription
 
 class ExperimentModel(ExperimentDescription):
-    def __init__(self, d, path):
+    def __init__(self, d: Dict, path: str):
         super().__init__(d, path)
-        self.agent = d['agent']
-        self.problem = d['problem']
-        self.steps = d['steps']
+        self.agent: str = d['agent']
+        self.problem: str = d['problem']
+        self.steps: int = d['steps']
 
-def load(path=None):
-    path = path if path is not None else sys.argv[1]
+def load(path: str):
     with open(path, 'r') as f:
         d = json.load(f)
 

@@ -4,12 +4,12 @@ from numba import njit
 from agents.BaseAgent import BaseAgent
 from utils.policies import Policy
 from utils.representations import Representation
+from agents.optimizers.Optimizer import get_optimizer
 
 @njit(cache=True)
 def tdrc_update(
     w: np.ndarray,
     h: np.ndarray,
-    alpha: float,
     x: np.ndarray,
     xp: np.ndarray,
     r: float,
@@ -25,21 +25,21 @@ def tdrc_update(
     dw = rho * delta * x - rho * gamma * delta_hat * xp
     dh = rho * (delta - delta_hat) * x - h
 
-    w += alpha * dw
-    h += alpha * dh
-    return w, h
+    return -dw, -dh
 
 class TDRC(BaseAgent):
     def __init__(self, gamma: float, actions: int, params: Dict[str, Any], rep: Representation, mu: Policy, pi: Policy):
         super().__init__(gamma, actions, params, rep, mu, pi)
-        self.features = rep.features()
-        self.alpha = params['alpha']
-
         self.theta = np.zeros(self.features)
         self.h = np.zeros(self.features)
 
+        Opt = get_optimizer(self.params['optimizer'])
+        self.h_opt = Opt(self.features, self.params)
+
     def update(self, x, a, xp, r, gamma, rho):
-        self.theta, self.h = tdrc_update(self.theta, self.h, self.alpha, x, xp, r, gamma, rho)
+        dw, dh = tdrc_update(self.theta, self.h, x, xp, r, gamma, rho)
+        self.theta = self.opt.apply(self.theta, dw)
+        self.h = self.h_opt.apply(self.h, dh)
 
     def weights(self):
         return self.theta

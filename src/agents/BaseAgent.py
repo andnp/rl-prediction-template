@@ -3,6 +3,7 @@ import numpy as np
 from typing import Any, Dict, Optional
 from utils.representations import Representation
 from utils.policies import Policy
+from agents.optimizers.Optimizer import get_optimizer
 
 class BaseAgent(RlGlue.BaseAgent):
     def __init__(self, gamma: float, actions: int, params: Dict[str, Any], rep: Representation, mu: Policy, pi: Policy):
@@ -13,6 +14,11 @@ class BaseAgent(RlGlue.BaseAgent):
         self.rep = rep
         self.mu = mu
         self.pi = pi
+
+        self.features = rep.features()
+
+        Opt = get_optimizer(self.params['optimizer'])
+        self.opt = Opt(self.features, self.params)
 
         # track one-step lag
         self.s_t: Optional[np.ndarray] = None
@@ -25,7 +31,7 @@ class BaseAgent(RlGlue.BaseAgent):
         self.a_t = self.mu.selectAction(s)
         return self.a_t
 
-    def step(self, r: float, s: np.ndarray):
+    def step(self, r: float, s: np.ndarray, extra: Dict):
         obs_tp1 = self.rep.encode(s)
 
         assert self.s_t is not None and self.a_t is not None and self.obs_t is not None
@@ -38,7 +44,7 @@ class BaseAgent(RlGlue.BaseAgent):
         self.obs_t = obs_tp1
         return self.a_t
 
-    def end(self, r: float):
+    def end(self, r: float, extra: Dict):
         assert self.s_t is not None and self.a_t is not None and self.obs_t is not None
         rho = self.pi.ratio(self.mu, self.s_t, self.a_t)
 
