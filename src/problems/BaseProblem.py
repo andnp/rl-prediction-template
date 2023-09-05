@@ -1,11 +1,13 @@
 from typing import Optional
-from agents.BaseAgent import BaseAgent
-from agents.registry import getAgent
-from utils.representations import Representation
 from PyRlEnvs.BaseEnvironment import BaseEnvironment
 
+from agents.BaseAgent import BaseAgent
+from agents.registry import getAgent
+from experiment.ExperimentModel import ExperimentModel
+from utils.representations import Representation
+
 class BaseProblem:
-    def __init__(self, exp, idx):
+    def __init__(self, exp: ExperimentModel, idx: int):
         self.exp = exp
         self.idx = idx
 

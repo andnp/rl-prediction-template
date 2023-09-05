@@ -1,5 +1,5 @@
 {
-    "agent": "TD",
+    "agent": "VTrace",
     "problem": "Baird",
     "steps": 100000,
     "metaParameters": {

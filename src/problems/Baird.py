@@ -1,4 +1,6 @@
+import numpy as np
 from PyRlEnvs.domains.BairdCounterexample import BairdCounterexample, behaviorPolicy, targetPolicy, representationMatrix, initialWeights
+
 from problems.BaseProblem import BaseProblem
 from utils.policies import Policy
 from utils.representations import MappedRepresentation
@@ -9,8 +11,8 @@ class Baird(BaseProblem):
         super().__init__(exp, idx)
 
         self.env = BairdCounterexample(self.seed)
-        self.behavior = Policy(behaviorPolicy)
-        self.target = Policy(targetPolicy)
+        self.behavior = Policy(behaviorPolicy, rng=np.random.default_rng(self.seed))
+        self.target = Policy(targetPolicy, rng=np.random.default_rng(self.seed))
 
         self.rep = MappedRepresentation(representationMatrix())
 

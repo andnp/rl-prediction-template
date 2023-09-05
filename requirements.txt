@@ -1,11 +1,11 @@
-RlGlue-andnp>=1.0.0
-PyExpUtils-andnp>=3.0.0
-PyFixedReps-andnp>=1.0.0
-PyRlEnvs-andnp>=2.0.0
+RlGlue-andnp~=1.0
+PyExpUtils-andnp~=6.0
+PyFixedReps-andnp~=4.0
+pyrlenvs-andnp~=2.0
 PyExpPlotting-andnp
+RlEvaluation~=1.0
+numpy>=1.22.0
+numba>=0.55.0
 
 matplotlib
-mypy
 flake8
-numpy
-numba

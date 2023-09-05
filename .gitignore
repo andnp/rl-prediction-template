@@ -1,12 +1,19 @@
 # ignore all results folders
+results
 results/
 results.tar
 .tmp/
+*.png
 
 # ignore python caches
 env/
+.venv/
 __pycache__
 *.pyc
+
+.pdm-python
+pdm.lock
+pyproject.toml
 
 # ignore test experiments
 test.json

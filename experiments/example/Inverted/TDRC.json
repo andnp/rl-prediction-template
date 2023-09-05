@@ -1,0 +1,14 @@
+{
+    "agent": "TDRC",
+    "problem": "RandomWalk",
+    "steps": 100000,
+    "metaParameters": {
+        "states": 5,
+        "behavior": 0.5,
+        "target": 0.4,
+        "representation": "inverted",
+
+        "optimizer": "adam",
+        "alpha": [0.125, 0.0625, 0.03125, 0.015625, 0.0078125, 0.00390625, 0.001953125]
+    }
+}

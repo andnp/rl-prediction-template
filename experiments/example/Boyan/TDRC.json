@@ -1,0 +1,9 @@
+{
+    "agent": "TDRC",
+    "problem": "Boyan",
+    "steps": 100000,
+    "metaParameters": {
+        "optimizer": "adam",
+        "alpha": [0.125, 0.0625, 0.03125, 0.015625, 0.0078125, 0.00390625, 0.001953125]
+    }
+}

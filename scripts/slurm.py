@@ -1,135 +1,112 @@
-import time
 import sys
 import os
 sys.path.append(os.getcwd() + '/src')
 
 import math
-import numpy as np
-import experiment.ExperimentModel as Experiment
+import time
+import argparse
+import dataclasses
 import PyExpUtils.runner.Slurm as Slurm
-import PyExpUtils.runner.parallel as Parallel
-from PyExpUtils.results.backends.pandas import detectMissingIndices
-from PyExpUtils.utils.generator import group
+import experiment.ExperimentModel as Experiment
 
-if len(sys.argv) < 4:
-    print('Please run again using')
-    print('python scripts/scriptName.py [path/to/slurm-def] [src/executable.py] [base_path] [runs] [paths/to/descriptions]...')
-    exit(0)
+from functools import partial
+from PyExpUtils.utils.generator import group
+from PyExpUtils.runner.utils import approximate_cost, gather_missing_indices
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--cluster', type=str, required=True)
+parser.add_argument('--runs', type=int, required=True)
+parser.add_argument('-e', type=str, nargs='+', required=True)
+parser.add_argument('--entry', type=str, default='src/main.py')
+parser.add_argument('--results', type=str, default='./')
+
+cmdline = parser.parse_args()
+
+ANNUAL_ALLOCATION = 724
 
 # -------------------------------
 # Generate scheduling bash script
 # -------------------------------
+cwd = os.getcwd()
+project_name = os.path.basename(cwd)
+
+venv_origin = f'{cwd}/venv.tar.xz'
+venv = '$SLURM_TMPDIR'
 
 # the contents of the string below will be the bash script that is scheduled on compute canada
 # change the script accordingly (e.g. add the necessary `module load X` commands)
-cwd = os.getcwd()
 def getJobScript(parallel):
     return f"""#!/bin/bash
+
+#SBATCH --signal=B:SIGTERM@180
+
 cd {cwd}
-. ~/env/bin/activate
+srun --ntasks=$SLURM_NNODES --ntasks-per-node=1 tar -xf {venv_origin} -C {venv}
 
 export MPLBACKEND=TKAgg
 export OMP_NUM_THREADS=1
 {parallel}
     """
 
-# --------------------------
-# Get command-line arguments
-# --------------------------
-slurm_path = sys.argv[1]
-executable = sys.argv[2]
-base_path = sys.argv[3]
-runs = int(sys.argv[4])
-experiment_paths = sys.argv[5:]
-
-# prints a progress bar
-def printProgress(size, it):
-    for i, _ in enumerate(it):
-        print(f'{i + 1}/{size}', end='\r')
-        if i - 1 == size:
-            print()
-        yield _
-
-def estimateUsage(indices, groupSize, cores, hours):
-    jobs = math.ceil(len(indices) / groupSize)
-
-    total_cores = jobs * cores
-    core_hours = total_cores * hours
-
-    core_years = core_hours / (24 * 365)
-    allocation = 724
-
-    return core_years, 100 * core_years / allocation
-
-def gatherMissing(experiment_paths, runs, groupSize, cores, total_hours):
-    out = {}
-
-    approximate_cost = np.zeros(2)
-
-    for path in experiment_paths:
-        exp = Experiment.load(path)
-
-        indices = detectMissingIndices(exp, runs, 'mspbe')
-        indices = sorted(indices)
-        out[path] = indices
-
-        approximate_cost += estimateUsage(indices, groupSize, cores, total_hours)
-
-        # figure out how many indices to expect
-        size = exp.numPermutations() * runs
-
-        # log how many are missing
-        print(path, f'{len(indices)} / {size}')
-
-    return out, approximate_cost
+# -----------------
+# Environment check
+# -----------------
+if not os.path.exists(venv_origin):
+    print("WARNING: zipped virtual environment not found at:", venv_origin)
+    print("Trying to make one now")
+    code = os.system('tar -caf venv.tar.xz .venv')
+    if code:
+        raise Exception("Failed to make virtual env")
 
 # ----------------
 # Scheduling logic
 # ----------------
-slurm = Slurm.fromFile(slurm_path)
+slurm = Slurm.fromFile(cmdline.cluster)
 
 # compute how many "tasks" to clump into each job
-assert slurm.cores is not None and slurm.sequential is not None
 groupSize = slurm.cores * slurm.sequential
 
 # compute how much time the jobs are going to take
 hours, minutes, seconds = slurm.time.split(':')
 total_hours = int(hours) + (int(minutes) / 60) + (int(seconds) / 3600)
 
-# gather missing and sum up cost
-missing, cost = gatherMissing(experiment_paths, runs, groupSize, slurm.cores, total_hours)
+# gather missing
+missing = gather_missing_indices(cmdline.e, cmdline.runs, loader=Experiment.load)
 
-print(f"Expected to use {cost[0]:.2f} core years, which is {cost[1]:.4f}% of our annual allocation")
+# compute cost
+memory = Slurm.memory_in_mb(slurm.mem_per_core)
+compute_cost = partial(approximate_cost, cores_per_job=slurm.cores, mem_per_core=memory, hours=total_hours)
+cost = sum(compute_cost(math.ceil(len(job_list) / groupSize)) for job_list in missing.values())
+perc = (cost / ANNUAL_ALLOCATION) * 100
+
+print(f"Expected to use {cost:.2f} core years, which is {perc:.4f}% of our annual allocation")
 input("Press Enter to confirm or ctrl+c to exit")
 
+# start scheduling
 for path in missing:
-    # reload this because we do bad mutable things later on
-    slurm = Slurm.fromFile(slurm_path)
-
     for g in group(missing[path], groupSize):
         l = list(g)
         print("scheduling:", path, l)
+        # make sure to only request the number of CPU cores necessary
+        cores = min([slurm.cores, len(l)])
+        sub = dataclasses.replace(slurm, cores=cores)
 
         # build the executable string
-        runner = f'python {executable} {path} '
+        # instead of activating the venv every time, just use its python directly
+        runner = f'{venv}/.venv/bin/python {cmdline.entry} -e {path} --save_path {cmdline.results} -i '
+
         # generate the gnu-parallel command for dispatching to many CPUs across server nodes
-        parallel = Parallel.build({
-            'executable': runner,
-            'cores': slurm.cores,
-            'tasks': l,
-        })
+        parallel = Slurm.buildParallel(runner, l, sub)
 
         # generate the bash script which will be scheduled
         script = getJobScript(parallel)
 
         # uncomment for debugging the scheduler to see what bash script would have been scheduled
+        # print(Slurm.to_cmdline_flags(sub))
         # print(script)
         # exit()
 
-        # make sure to only request the number of CPU cores necessary
-        assert slurm.cores is not None
-        slurm.cores = min([slurm.cores, len(l)])
-        Slurm.schedule(script, slurm)
+        Slurm.schedule(script, sub)
 
         # DO NOT REMOVE. This will prevent you from overburdening the slurm scheduler. Be a good citizen.
         time.sleep(2)

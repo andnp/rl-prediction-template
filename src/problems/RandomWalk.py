@@ -29,11 +29,11 @@ class RandomWalk(BaseProblem):
 
         mu_pl = self.params['behavior']
         mu_probs = np.array([mu_pl, 1 - mu_pl])
-        self.behavior = Policy(lambda s: mu_probs)
+        self.behavior = Policy(lambda s: mu_probs, rng=np.random.default_rng(self.seed))
 
         pi_pl = self.params['target']
         pi_probs = np.array([pi_pl, 1 - pi_pl])
-        self.target = Policy(lambda s: pi_probs)
+        self.target = Policy(lambda s: pi_probs, rng=np.random.default_rng(self.seed))
 
         self.env = buildRandomWalk(self.states)(self.seed)
 
